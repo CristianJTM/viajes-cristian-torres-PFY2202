@@ -43,4 +43,82 @@ export const handlers = [
       },
     })
   }),
+
+  // -------------------------------------------------------------------------
+  // GraphQL — mutation CrearReserva(input)
+  // El total se recalcula en el "servidor": no se confía en el cliente.
+  // -------------------------------------------------------------------------
+  graphql.mutation('CrearReserva', async ({ variables }) => {
+    await delay(1000)
+
+    const input = variables?.input
+
+    if (!input || !Array.isArray(input.items) || input.items.length === 0) {
+      return HttpResponse.json({
+        errors: [{ message: 'La reserva no tiene ítems.' }],
+      })
+    }
+
+    const itemsValidos = input.items.every(
+      (item) =>
+        item &&
+        typeof item.precio === 'number' &&
+        Number.isFinite(item.precio) &&
+        Number.isInteger(item.cantidad) &&
+        item.cantidad > 0,
+    )
+    if (!itemsValidos) {
+      return HttpResponse.json({
+        errors: [{ message: 'Los ítems de la reserva no son válidos.' }],
+      })
+    }
+
+    if (!input.cliente || input.cliente.trim().length < 3) {
+      return HttpResponse.json({
+        errors: [{ message: 'El nombre del cliente es obligatorio.' }],
+      })
+    }
+
+    if (!input.email || !input.email.includes('@')) {
+      return HttpResponse.json({
+        errors: [{ message: 'El email del cliente no es válido.' }],
+      })
+    }
+
+    // Trigger determinista para probar el estado de error en la UI.
+    if (input.email.trim().toLowerCase() === 'error@test.com') {
+      return HttpResponse.json({
+        errors: [
+          { message: 'No se pudo procesar la reserva. Intenta nuevamente.' },
+        ],
+      })
+    }
+
+    const total = input.items.reduce(
+      (acumulado, item) => acumulado + item.precio * item.cantidad,
+      0,
+    )
+    const codigo = `RSV-${Date.now().toString(36).toUpperCase()}`
+
+    return HttpResponse.json({
+      data: {
+        crearReserva: {
+          codigo,
+          estado: 'CONFIRMADA',
+          total,
+          cliente: input.cliente.trim(),
+          email: input.email.trim(),
+          fechaViaje: input.fechaViaje ?? null,
+          creadaEn: new Date().toISOString(),
+          items: input.items.map((item) => ({
+            id: item.id,
+            tipo: item.tipo,
+            titulo: item.titulo,
+            cantidad: item.cantidad,
+            precio: item.precio,
+          })),
+        },
+      },
+    })
+  }),
 ]
