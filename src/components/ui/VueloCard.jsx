@@ -2,12 +2,14 @@ import { formatearFecha, formatearPrecio } from '../../lib/formato.js'
 
 /**
  * Tarjeta de un vuelo proveniente de GraphQL.
+ * Es presentacional: el alta/baja de la reserva la decide el contenedor.
  */
-export default function VueloCard({ vuelo }) {
+export default function VueloCard({ vuelo, enReserva = false, onAgregar }) {
   const { aerolinea, origen, destino, precio, fecha, disponible } = vuelo
+  const bloqueado = !disponible || !onAgregar
 
   return (
-    <article className="card p-5">
+    <article className="card flex flex-col p-5">
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-bold text-slate-900">{aerolinea}</h3>
         <span
@@ -28,6 +30,28 @@ export default function VueloCard({ vuelo }) {
       <p className="mt-3 text-lg font-extrabold text-brand-700">
         {formatearPrecio(precio)}
       </p>
+
+      <div className="mt-auto pt-4">
+        <button
+          type="button"
+          onClick={onAgregar}
+          disabled={bloqueado}
+          aria-pressed={enReserva}
+          className={`w-full rounded-lg px-4 py-2 text-sm font-semibold transition ${
+            bloqueado
+              ? 'cursor-not-allowed bg-slate-100 text-slate-400'
+              : enReserva
+                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100'
+                : 'bg-brand-600 text-white hover:bg-brand-700'
+          }`}
+        >
+          {!disponible
+            ? 'No disponible'
+            : enReserva
+              ? '✓ En la reserva'
+              : '+ Agregar a la reserva'}
+        </button>
+      </div>
     </article>
   )
 }
