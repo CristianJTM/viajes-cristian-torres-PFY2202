@@ -250,9 +250,29 @@ export const destinos = [
   },
 ]
 
+// Índice id -> datos canónicos. Permite que el mock de CrearReserva tome el
+// precio/título reales del catálogo y no confíe en lo que envía el cliente.
+const itemsPorId = new Map(
+  destinos.flatMap((destino) => [
+    ...destino.vuelos.map((vuelo) => [
+      vuelo.id,
+      { tipo: 'vuelo', titulo: vuelo.aerolinea, precio: vuelo.precio },
+    ]),
+    ...destino.hoteles.map((hotel) => [
+      hotel.id,
+      { tipo: 'hotel', titulo: hotel.nombre, precio: hotel.precioNoche },
+    ]),
+  ]),
+)
+
 /** Devuelve el destino completo (con vuelos y hoteles) o undefined. */
 export function getDestino(slug) {
   return destinos.find((destino) => destino.slug === slug)
+}
+
+/** Devuelve { tipo, titulo, precio } de un vuelo/hotel por id, o undefined. */
+export function getItemCatalogo(id) {
+  return itemsPorId.get(id)
 }
 
 /** Devuelve los destinos SIN vuelos ni hoteles, listos para el endpoint REST. */

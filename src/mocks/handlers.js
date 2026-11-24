@@ -1,8 +1,12 @@
 import { http, graphql, HttpResponse, delay } from 'msw'
-import { destinosParaREST, getDestino } from './catalogo.js'
+import { destinosParaREST, getDestino, getItemCatalogo } from './catalogo.js'
+import { CANTIDAD_MAX, CANTIDAD_MIN } from '../lib/limites.js'
 
 // Path que respeta la base de Vite: '/' en dev y '/viajes-.../' en Pages.
 const API_DESTINOS = `${import.meta.env.BASE_URL}api/destinos`
+
+// Error GraphQL: HTTP 200 con `errors[]` (nunca HTTP 404).
+const errorGraphQL = (message) => HttpResponse.json({ errors: [{ message }] })
 
 export const handlers = [
   // -------------------------------------------------------------------------
@@ -29,12 +33,7 @@ export const handlers = [
     const slug = variables?.slug
     const destino = getDestino(slug)
 
-    if (!destino) {
-      // Error GraphQL (HTTP 200 con `errors`), NO un HTTP 404.
-      return HttpResponse.json({
-        errors: [{ message: `Destino no encontrado: ${slug}` }],
-      })
-    }
+    if (!destino) return errorGraphQL(`Destino no encontrado: ${slug}`)
 
     return HttpResponse.json({
       data: {
@@ -46,59 +45,71 @@ export const handlers = [
 
   // -------------------------------------------------------------------------
   // GraphQL — mutation CrearReserva(input)
-  // El total se recalcula en el "servidor": no se confía en el cliente.
+  // Precio, título y tipo se toman del catálogo: no se confía en el cliente.
   // -------------------------------------------------------------------------
   graphql.mutation('CrearReserva', async ({ variables }) => {
     await delay(1000)
 
     const input = variables?.input
 
-    if (!input || !Array.isArray(input.items) || input.items.length === 0) {
-      return HttpResponse.json({
-        errors: [{ message: 'La reserva no tiene ítems.' }],
-      })
+    if (!input) return errorGraphQL('La reserva no tiene datos.')
+
+    if (!Array.isArray(input.items) || input.items.length === 0) {
+      return errorGraphQL('La reserva no tiene ítems.')
     }
 
     const itemsValidos = input.items.every(
       (item) =>
         item &&
-        typeof item.precio === 'number' &&
-        Number.isFinite(item.precio) &&
+        typeof item.id === 'string' &&
         Number.isInteger(item.cantidad) &&
-        item.cantidad > 0,
+        item.cantidad >= CANTIDAD_MIN &&
+        item.cantidad <= CANTIDAD_MAX,
     )
     if (!itemsValidos) {
-      return HttpResponse.json({
-        errors: [{ message: 'Los ítems de la reserva no son válidos.' }],
-      })
+      return errorGraphQL('Los ítems de la reserva no son válidos.')
     }
 
-    if (!input.cliente || input.cliente.trim().length < 3) {
-      return HttpResponse.json({
-        errors: [{ message: 'El nombre del cliente es obligatorio.' }],
-      })
+    // typeof antes de .trim()/.includes(): un valor no-string lanzaría un
+    // TypeError dentro del handler y Apollo quedaría sin respuesta útil.
+    if (typeof input.cliente !== 'string' || input.cliente.trim().length < 3) {
+      return errorGraphQL('El nombre del cliente es obligatorio.')
     }
 
-    if (!input.email || !input.email.includes('@')) {
-      return HttpResponse.json({
-        errors: [{ message: 'El email del cliente no es válido.' }],
-      })
+    if (typeof input.email !== 'string' || !input.email.includes('@')) {
+      return errorGraphQL('El email del cliente no es válido.')
     }
 
     // Trigger determinista para probar el estado de error en la UI.
     if (input.email.trim().toLowerCase() === 'error@test.com') {
-      return HttpResponse.json({
-        errors: [
-          { message: 'No se pudo procesar la reserva. Intenta nuevamente.' },
-        ],
+      return errorGraphQL('No se pudo procesar la reserva. Intenta nuevamente.')
+    }
+
+    const itemsReserva = []
+    for (const item of input.items) {
+      const real = getItemCatalogo(item.id)
+      if (!real) {
+        return errorGraphQL(`El ítem ${item.id} no existe en el catálogo.`)
+      }
+
+      itemsReserva.push({
+        id: item.id,
+        tipo: real.tipo,
+        titulo: real.titulo,
+        cantidad: item.cantidad,
+        precio: real.precio,
       })
     }
 
-    const total = input.items.reduce(
+    const total = itemsReserva.reduce(
       (acumulado, item) => acumulado + item.precio * item.cantidad,
       0,
     )
     const codigo = `RSV-${Date.now().toString(36).toUpperCase()}`
+    const fechaViaje =
+      typeof input.fechaViaje === 'string' && input.fechaViaje
+        ? input.fechaViaje
+        : null
 
     return HttpResponse.json({
       data: {
@@ -108,15 +119,9 @@ export const handlers = [
           total,
           cliente: input.cliente.trim(),
           email: input.email.trim(),
-          fechaViaje: input.fechaViaje ?? null,
+          fechaViaje,
           creadaEn: new Date().toISOString(),
-          items: input.items.map((item) => ({
-            id: item.id,
-            tipo: item.tipo,
-            titulo: item.titulo,
-            cantidad: item.cantidad,
-            precio: item.precio,
-          })),
+          items: itemsReserva,
         },
       },
     })

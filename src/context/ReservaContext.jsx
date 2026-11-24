@@ -1,8 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react'
+import { CANTIDAD_MAX, CANTIDAD_MIN } from '../lib/limites.js'
 
 const STORAGE_KEY = 'viajes:reserva:v1'
-const CANTIDAD_MIN = 1
-const CANTIDAD_MAX = 30
 
 function normalizarCantidad(valor) {
   const numero = Number(valor)

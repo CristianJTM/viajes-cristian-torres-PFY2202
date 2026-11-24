@@ -1,3 +1,5 @@
+import { CANTIDAD_MAX, CANTIDAD_MIN } from '../../lib/limites.js'
+
 const claseBoton =
   'flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-lg font-bold leading-none text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40'
 
@@ -8,13 +10,15 @@ export default function CantidadControl({
   cantidad,
   onChange,
   etiqueta = 'unidades',
+  min = CANTIDAD_MIN,
+  max = CANTIDAD_MAX,
 }) {
   return (
     <div className="flex items-center gap-2">
       <button
         type="button"
         onClick={() => onChange(cantidad - 1)}
-        disabled={cantidad <= 1}
+        disabled={cantidad <= min}
         aria-label={`Disminuir ${etiqueta}`}
         className={claseBoton}
       >
@@ -28,7 +32,7 @@ export default function CantidadControl({
       <button
         type="button"
         onClick={() => onChange(cantidad + 1)}
-        disabled={cantidad >= 30}
+        disabled={cantidad >= max}
         aria-label={`Aumentar ${etiqueta}`}
         className={claseBoton}
       >
