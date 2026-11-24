@@ -1,5 +1,9 @@
 import { Link } from 'react-router'
-import { formatearFecha, formatearPrecio } from '../../lib/formato.js'
+import {
+  formatearFecha,
+  formatearFechaHora,
+  formatearPrecio,
+} from '../../lib/formato.js'
 
 /**
  * Panel de confirmación tras una reserva exitosa.
@@ -28,11 +32,27 @@ export default function ReservaExitosa({ reserva, onNuevaReserva }) {
           <dt className="text-slate-600">Email</dt>
           <dd className="font-semibold text-slate-900">{reserva.email}</dd>
         </div>
+        {reserva.estado && (
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-600">Estado</dt>
+            <dd className="font-semibold text-emerald-700">
+              {reserva.estado === 'CONFIRMADA' ? 'Confirmada' : reserva.estado}
+            </dd>
+          </div>
+        )}
         {reserva.fechaViaje && (
           <div className="flex justify-between gap-3">
             <dt className="text-slate-600">Fecha de viaje</dt>
             <dd className="font-semibold text-slate-900">
               {formatearFecha(reserva.fechaViaje)}
+            </dd>
+          </div>
+        )}
+        {reserva.creadaEn && (
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-600">Creada</dt>
+            <dd className="font-semibold text-slate-900">
+              {formatearFechaHora(reserva.creadaEn)}
             </dd>
           </div>
         )}

@@ -49,7 +49,7 @@ export default function DetalleDestino() {
   const { slug } = useParams()
   const { destinos } = useDestinosContext()
   const { agregar, quitar, estaEnReserva, cantidadItems } = useReserva()
-  const { loading, error, data } = useQuery(DETALLE_DESTINO, {
+  const { loading, error, data, refetch } = useQuery(DETALLE_DESTINO, {
     variables: { slug },
   })
 
@@ -131,7 +131,10 @@ export default function DetalleDestino() {
 
       {loading && <LoadingSpinner label="Buscando vuelos y hoteles…" />}
 
-      {!loading && error && <ErrorMessage message={error.message} />}
+      {!loading && error && (
+        // refetch(variables): se envuelve para no pasar el evento del click.
+        <ErrorMessage message={error.message} onRetry={() => refetch()} />
+      )}
 
       {!loading && !error && data && (
         <div className="space-y-10">
