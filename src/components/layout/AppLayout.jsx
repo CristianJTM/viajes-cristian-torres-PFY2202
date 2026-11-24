@@ -1,9 +1,17 @@
-import { Outlet } from 'react-router'
+import { useEffect } from 'react'
+import { Outlet, useLocation } from 'react-router'
 import Navbar from './Navbar.jsx'
 import { DestinosProvider } from '../../context/DestinosContext.jsx'
 import { ReservaProvider } from '../../context/ReservaContext.jsx'
 
 export default function AppLayout() {
+  const { pathname } = useLocation()
+
+  // En una SPA el scroll se conserva al cambiar de ruta; lo reiniciamos.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [pathname])
+
   return (
     <DestinosProvider>
       <ReservaProvider>

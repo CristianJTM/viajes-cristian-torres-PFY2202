@@ -32,11 +32,22 @@ export default function Navbar() {
           <NavLink to="/" end className={claseNav}>
             Inicio
           </NavLink>
-          <NavLink to="/carrito" className={claseNav} aria-label="Reserva">
+          <NavLink
+            to="/carrito"
+            className={claseNav}
+            aria-label={`Reserva, ${cantidadItems} ${
+              cantidadItems === 1 ? 'ítem' : 'ítems'
+            }`}
+          >
             <span aria-hidden="true">🛒</span>
-            <span className="hidden sm:inline">Reserva</span>
+            <span className="hidden sm:inline" aria-hidden="true">
+              Reserva
+            </span>
             {cantidadItems > 0 && (
-              <span className="ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white px-1.5 text-xs font-bold text-brand-700 ring-1 ring-brand-200">
+              <span
+                aria-hidden="true"
+                className="ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white px-1.5 text-xs font-bold text-brand-700 ring-1 ring-brand-200"
+              >
                 {cantidadItems}
               </span>
             )}
