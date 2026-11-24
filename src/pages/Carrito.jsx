@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { gql, useMutation } from '@apollo/client'
 import CantidadControl from '../components/ui/CantidadControl.jsx'
 import ErrorMessage from '../components/ui/ErrorMessage.jsx'
@@ -7,6 +7,7 @@ import ReservaExitosa from '../components/ui/ReservaExitosa.jsx'
 import ResumenReserva from '../components/ui/ResumenReserva.jsx'
 import { useReserva } from '../context/ReservaContext.jsx'
 import { formatearPrecio } from '../lib/formato.js'
+import { fechaHoyISO, validarCheckout } from '../lib/validarCheckout.js'
 
 // Mutación nombrada: MSW la matchea por su operationName "CrearReserva".
 export const CREAR_RESERVA = gql`
@@ -31,33 +32,6 @@ export const CREAR_RESERVA = gql`
 `
 
 const FORMULARIO_INICIAL = { nombre: '', email: '', fechaViaje: '' }
-
-function fechaHoyISO() {
-  const hoy = new Date()
-  const mes = String(hoy.getMonth() + 1).padStart(2, '0')
-  const dia = String(hoy.getDate()).padStart(2, '0')
-  return `${hoy.getFullYear()}-${mes}-${dia}`
-}
-
-function validar(formulario) {
-  const errores = {}
-
-  if (formulario.nombre.trim().length < 3) {
-    errores.nombre = 'Ingresa tu nombre completo (mínimo 3 caracteres).'
-  }
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulario.email.trim())) {
-    errores.email = 'Ingresa un email válido.'
-  }
-
-  if (!formulario.fechaViaje) {
-    errores.fechaViaje = 'Selecciona la fecha de viaje.'
-  } else if (formulario.fechaViaje < fechaHoyISO()) {
-    errores.fechaViaje = 'La fecha debe ser hoy o posterior.'
-  }
-
-  return errores
-}
 
 function claseInput(tieneError) {
   return `mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 outline-none transition focus:ring-2 ${
@@ -106,11 +80,13 @@ export default function Carrito() {
   const { items, total, cantidadItems, quitar, cambiarCantidad, vaciar } =
     useReserva()
 
+  const navigate = useNavigate()
+
   const [formulario, setFormulario] = useState(FORMULARIO_INICIAL)
   const [errores, setErrores] = useState({})
   const [reservaConfirmada, setReservaConfirmada] = useState(null)
 
-  const [crearReserva, { loading, error }] = useMutation(CREAR_RESERVA)
+  const [crearReserva, { loading, error, reset }] = useMutation(CREAR_RESERVA)
 
   const vuelos = useMemo(
     () => items.filter((item) => item.tipo === 'vuelo'),
@@ -124,12 +100,14 @@ export default function Carrito() {
   function actualizarCampo(campo, valor) {
     setFormulario((previo) => ({ ...previo, [campo]: valor }))
     setErrores((previos) => ({ ...previos, [campo]: undefined }))
+    // El error de la mutación deja de aplicar en cuanto el usuario corrige.
+    if (error) reset()
   }
 
   async function manejarEnvio(evento) {
     evento.preventDefault()
 
-    const erroresValidacion = validar(formulario)
+    const erroresValidacion = validarCheckout(formulario)
     if (Object.keys(erroresValidacion).length > 0) {
       setErrores(erroresValidacion)
       return
@@ -167,7 +145,10 @@ export default function Carrito() {
     return (
       <ReservaExitosa
         reserva={reservaConfirmada}
-        onNuevaReserva={() => setReservaConfirmada(null)}
+        onNuevaReserva={() => {
+          setReservaConfirmada(null)
+          navigate('/')
+        }}
       />
     )
   }
@@ -275,10 +256,16 @@ export default function Carrito() {
                   actualizarCampo('nombre', evento.target.value)
                 }
                 placeholder="Cristian Torres"
+                aria-invalid={Boolean(errores.nombre)}
+                aria-describedby={errores.nombre ? 'nombre-error' : undefined}
                 className={claseInput(Boolean(errores.nombre))}
               />
               {errores.nombre && (
-                <p className="mt-1 text-xs font-medium text-red-600">
+                <p
+                  id="nombre-error"
+                  role="alert"
+                  className="mt-1 text-xs font-medium text-red-600"
+                >
                   {errores.nombre}
                 </p>
               )}
@@ -299,10 +286,16 @@ export default function Carrito() {
                   actualizarCampo('email', evento.target.value)
                 }
                 placeholder="tucorreo@ejemplo.com"
+                aria-invalid={Boolean(errores.email)}
+                aria-describedby={errores.email ? 'email-error' : undefined}
                 className={claseInput(Boolean(errores.email))}
               />
               {errores.email && (
-                <p className="mt-1 text-xs font-medium text-red-600">
+                <p
+                  id="email-error"
+                  role="alert"
+                  className="mt-1 text-xs font-medium text-red-600"
+                >
                   {errores.email}
                 </p>
               )}
@@ -323,16 +316,29 @@ export default function Carrito() {
                 onChange={(evento) =>
                   actualizarCampo('fechaViaje', evento.target.value)
                 }
+                aria-invalid={Boolean(errores.fechaViaje)}
+                aria-describedby={
+                  errores.fechaViaje ? 'fechaViaje-error' : undefined
+                }
                 className={claseInput(Boolean(errores.fechaViaje))}
               />
               {errores.fechaViaje && (
-                <p className="mt-1 text-xs font-medium text-red-600">
+                <p
+                  id="fechaViaje-error"
+                  role="alert"
+                  className="mt-1 text-xs font-medium text-red-600"
+                >
                   {errores.fechaViaje}
                 </p>
               )}
             </div>
 
-            {error && <ErrorMessage message={error.message} />}
+            {error && (
+              <ErrorMessage
+                title="No pudimos confirmar tu reserva"
+                message={error.message}
+              />
+            )}
 
             <button
               type="submit"

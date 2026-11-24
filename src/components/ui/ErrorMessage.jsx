@@ -2,6 +2,7 @@
  * Mensaje de error reutilizable con reintento opcional.
  */
 export default function ErrorMessage({
+  title = 'No pudimos cargar la información',
   message = 'Ocurrió un error inesperado.',
   onRetry,
 }) {
@@ -10,9 +11,7 @@ export default function ErrorMessage({
       className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center"
       role="alert"
     >
-      <p className="text-lg font-semibold text-red-700">
-        No pudimos cargar la información
-      </p>
+      <p className="text-lg font-semibold text-red-700">{title}</p>
       <p className="mt-1 text-sm text-red-600">{message}</p>
       {onRetry && (
         <button
