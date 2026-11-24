@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync } from 'node:fs'
+import { copyFileSync, existsSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 // Copia dist/index.html -> dist/404.html para que GitHub Pages
@@ -13,3 +13,8 @@ if (!existsSync(origen)) {
 
 copyFileSync(origen, destino)
 console.log('dist/404.html generado para deep links en GitHub Pages')
+
+// Sin .nojekyll, Pages procesa el sitio con Jekyll y puede ignorar archivos
+// o rutas que empiezan con "_", rompiendo los deep links del SPA.
+writeFileSync(resolve('dist/.nojekyll'), '')
+console.log('dist/.nojekyll generado para desactivar Jekyll en GitHub Pages')
