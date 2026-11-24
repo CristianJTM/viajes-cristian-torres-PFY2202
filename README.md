@@ -64,7 +64,9 @@ src/
 ├─ lib/
 │  ├─ api.js              # API_BASE, ApiError, pedirJson()
 │  ├─ apolloClient.js     # ApolloClient -> <BASE_URL>graphql
-│  └─ formato.js          # helpers de precio y fecha
+│  ├─ formato.js          # helpers de precio y fecha
+│  ├─ limites.js          # CANTIDAD_MIN / CANTIDAD_MAX compartidos
+│  └─ validarCheckout.js  # reglas del formulario de checkout (puras)
 ├─ context/
 │  ├─ DestinosContext.jsx # consulta REST compartida (Navbar + Home)
 │  └─ ReservaContext.jsx  # carrito global (useReducer + localStorage)
@@ -112,6 +114,13 @@ src/
 - `delay(1000)`.
 - **200** → array de destinos: `{ slug, nombre, pais, emoji, descripcion, actividades[] }`.
 - **500** → `{ error: 'Error del servidor' }` si se agrega `?fail=500`.
+
+**Cómo probar el error REST:** abre `/?fail=500` (en local
+`http://localhost:5173/?fail=500`, en Pages
+`https://cristianjtm.github.io/viajes-cristian-torres-PFY2202/?fail=500`). Home
+muestra `ErrorMessage` con el botón **Reintentar**. Mientras el parámetro siga
+en la URL el reintento volverá a fallar: es intencional, para demostrar el
+estado de error.
 
 ### GraphQL — `POST /graphql`
 
@@ -208,16 +217,25 @@ mutation CrearReserva($input: CrearReservaInput!) {
 }
 ```
 
-- `delay(1000)` en ambos handlers.
+- `delay(1000)` en los handlers.
 - Slug inexistente → respuesta con `errors` (HTTP 200, **no** HTTP 404).
-- La mutación **recalcula el total en el mock** a partir de los ítems; no confía
-  en el total del cliente.
+- La mutación toma **título, tipo y precio del catálogo** (`getItemCatalogo`) y
+  recalcula el total en el mock: no confía en precios ni total enviados por el
+  cliente. Un `id` inexistente devuelve `errors`.
+- Cantidades válidas: 1–30 (misma constante en carrito, control y mock:
+  `src/lib/limites.js`).
 - Trigger de error determinista: usar `error@test.com` como email devuelve
   `errors` para probar el estado de error de la UI.
 
 > `catalogo.js` es la **única fuente de datos**. El handler REST elimina
 > `vuelos`/`hoteles`, y el handler GraphQL los lee del mismo destino, por lo que
 > un slug nunca queda desincronizado.
+
+> **Datos vacíos:** si un destino no tuviera vuelos u hoteles, `DetalleDestino`
+> muestra un mensaje amigable en lugar de una grilla vacía
+> (`src/pages/DetalleDestino.jsx`). El catálogo actual trae 3 vuelos y 3 hoteles
+> por destino, así que ese estado se verifica en código, no con los datos de
+> ejemplo.
 
 ---
 
@@ -292,31 +310,65 @@ npm run deploy
 
 - aplica `base = '/viajes-cristian-torres-PFY2202/'`,
 - activa MSW también en producción (`MODE === 'pages'`),
-- genera `dist/404.html` para que los deep links (`/destino/paris`) funcionen.
+- genera `dist/404.html` para que los deep links (`/destino/paris`) funcionen,
+- genera `dist/.nojekyll` para que Jekyll no interfiera con los archivos del
+  SPA en GitHub Pages.
 
 ---
 
-## ✅ Pruebas realizadas
+## ✅ Pruebas en navegadores
 
-Verificado de extremo a extremo con **Chrome** (headless) tanto en `npm run dev`
-como en el build de Pages (`npm run preview:pages`):
+Verificación **manual y asistida** sobre el **build de Pages**
+(`npm run build:pages` + `npm run preview:pages`), es decir, el mismo artefacto
+que se publica en GitHub Pages, navegando por la subruta
+`/viajes-cristian-torres-PFY2202/`.
 
-- Home muestra los **4 destinos** desde REST.
-- Navegación a `/destino/paris` y render de **3 vuelos + 3 hoteles** desde GraphQL.
-- Slug inexistente → mensaje de error (`Destino no encontrado`).
-- Ruta inválida → página **404**.
-- Vuelo agotado → botón **“No disponible”** deshabilitado.
-- Agregar vuelo y hotel → badge del Navbar **1 → 2**.
-- Carrito: 2 ítems, total **$1.240.000**; al subir pasajeros a 2 → **$2.160.000**.
-- Refresh del carrito → ítems y total **persisten**.
-- Submit vacío → errores de **validación** inline.
-- Checkout válido → código **`RSV-…`**, total correcto y carrito vaciado.
-- Email `error@test.com` → mensaje de error y **carrito conservado**.
-- Sin errores en consola.
-- Rutas con prefijo correcto en Pages (`/viajes-cristian-torres-PFY2202/carrito`).
+| Navegador | Versión probada | Resultado |
+|---|---|---|
+| Chrome | 158.0.8127.36 | 12/12 escenarios ✅, consola sin errores de la app |
+| Edge | 158.0.4370.33 | 12/12 escenarios ✅, consola sin errores de la app |
+| Firefox | 160.0.1 | 12/12 escenarios ✅, consola sin errores de la app |
 
-Navegadores recomendados para la revisión manual: **Chrome, Edge y Firefox**
-(últimas versiones), en escritorio y vista móvil.
+### Matriz de escenarios
+
+| # | Escenario | Chrome | Edge | Firefox |
+|---|---|---|---|---|
+| 1 | Home muestra los 4 destinos (REST) | ✅ | ✅ | ✅ |
+| 2 | `/destino/paris` muestra 3 vuelos + 3 hoteles (GraphQL) | ✅ | ✅ | ✅ |
+| 3 | Slug inexistente → error GraphQL | ✅ | ✅ | ✅ |
+| 4 | `/?fail=500` → error REST y botón Reintentar | ✅ | ✅ | ✅ |
+| 5 | Ruta inválida → página 404 | ✅ | ✅ | ✅ |
+| 6 | Agregar vuelo y hotel → badge del Navbar en 2 | ✅ | ✅ | ✅ |
+| 7 | Carrito: 2 ítems y total $1.240.000 | ✅ | ✅ | ✅ |
+| 8 | Refresh → carrito y total persisten (localStorage) | ✅ | ✅ | ✅ |
+| 9 | Checkout válido → código `RSV-…`, total y carrito vaciado | ✅ | ✅ | ✅ |
+| 10 | Email `error@test.com` → error visible y carrito conservado | ✅ | ✅ | ✅ |
+| 11 | Submit inválido → errores inline (nombre, email, fecha) | ✅ | ✅ | ✅ |
+| 12 | Deep links bajo la subruta de Pages (`/carrito`, `/destino/:slug`) | ✅ | ✅ | ✅ |
+
+### Cómo reproducir
+
+```bash
+npm run build:pages
+npm run preview:pages   # http://localhost:4173/viajes-cristian-torres-PFY2202/
+```
+
+1. Abre la raíz de la subruta y espera ~1 s: aparecen los 4 destinos (REST).
+2. Entra a `/destino/paris` y espera ~1 s: 3 vuelos y 3 hoteles (GraphQL).
+3. Abre `/destino/no-existe`: `ErrorMessage` de GraphQL (HTTP 200 con `errors`).
+4. Abre `/?fail=500`: `ErrorMessage` de REST con botón **Reintentar**.
+5. Abre una ruta inválida: página 404 con link de vuelta.
+6. Agrega un vuelo y un hotel: el badge del Navbar queda en 2.
+7. Entra a `/carrito`: 2 ítems con subtotales y total.
+8. Recarga `/carrito`: los ítems persisten vía `localStorage`.
+9. Confirma con datos válidos: código `RSV-…`, total y carrito vaciado.
+10. Confirma con `error@test.com`: error visible y los ítems se conservan.
+11. Envía el formulario vacío: errores inline en nombre, email y fecha.
+12. Abre directo `/carrito` y `/destino/paris`: los deep links resuelven
+    gracias a `404.html`.
+
+Repite la matriz en escritorio y en vista móvil (DevTools, 375 px) para validar
+el layout responsive.
 
 ---
 
