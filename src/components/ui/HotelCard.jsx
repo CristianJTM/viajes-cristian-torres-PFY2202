@@ -1,11 +1,18 @@
-import { formatearPrecio } from '../../lib/formato.js'
+import { formatearFecha, formatearPrecio } from '../../lib/formato.js'
 
 /**
  * Tarjeta de un hotel proveniente de GraphQL.
  * Es presentacional: el alta/baja de la reserva la decide el contenedor.
  */
 export default function HotelCard({ hotel, enReserva = false, onAgregar }) {
-  const { nombre, categoria, precioNoche, disponible } = hotel
+  const {
+    nombre,
+    categoria,
+    precioNoche,
+    disponible,
+    disponibleDesde,
+    disponibleHasta,
+  } = hotel
   const bloqueado = !disponible || !onAgregar
 
   return (
@@ -24,6 +31,12 @@ export default function HotelCard({ hotel, enReserva = false, onAgregar }) {
       </div>
 
       <p className="mt-3 text-sm font-medium text-slate-700">⭐ {categoria}</p>
+      {(disponibleDesde || disponibleHasta) && (
+        <p className="mt-1 text-xs text-slate-500">
+          🗓️ Disponibilidad: {formatearFecha(disponibleDesde)} –{' '}
+          {formatearFecha(disponibleHasta)}
+        </p>
+      )}
       <p className="mt-3 text-lg font-extrabold text-brand-700">
         {formatearPrecio(precioNoche)}
         <span className="ml-1 text-sm font-medium text-slate-500">/ noche</span>

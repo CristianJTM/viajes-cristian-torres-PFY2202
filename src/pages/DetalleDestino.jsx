@@ -24,6 +24,8 @@ export const DETALLE_DESTINO = gql`
       nombre
       categoria
       precioNoche
+      disponibleDesde
+      disponibleHasta
       disponible
     }
   }
