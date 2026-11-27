@@ -12,7 +12,7 @@
     "build:pages": "vite build --mode pages",
     "postbuild:pages": "node scripts/postbuild.mjs",
     "predeploy": "npm run build:pages",
-    "deploy": "gh-pages -d dist",
+    "deploy": "gh-pages -d dist --dotfiles",
     "evidencias": "npm run build:pages && node scripts/capturar-evidencias.mjs"
   },
   "dependencies": {
