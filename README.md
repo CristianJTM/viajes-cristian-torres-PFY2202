@@ -34,7 +34,8 @@ GraphQL.
 ## ✨ Funcionalidades
 
 - **Home**: grilla responsive de destinos cargada desde la API REST.
-- **Detalle**: vuelos y hoteles del destino desde GraphQL.
+- **Detalle**: vuelos y hoteles del destino desde GraphQL, con la fecha del
+  vuelo y el período de disponibilidad del hotel.
 - **Reserva/carrito**: agrega vuelos y hoteles disponibles, ajusta la cantidad
   (pasajeros/noches), ve subtotales y total, y quita ítems.
 - **Checkout validado**: nombre, email y fecha de viaje; estado de carga y
@@ -140,6 +141,8 @@ type Hotel {
   nombre: String!
   categoria: String!
   precioNoche: Float!
+  disponibleDesde: String!
+  disponibleHasta: String!
   disponible: Boolean!
 }
 
@@ -195,7 +198,7 @@ query DetalleDestino($slug: String!) {
     id aerolinea origen destino precio fecha disponible
   }
   hoteles(slug: $slug) {
-    id nombre categoria precioNoche disponible
+    id nombre categoria precioNoche disponibleDesde disponibleHasta disponible
   }
 }
 ```
@@ -219,6 +222,9 @@ mutation CrearReserva($input: CrearReservaInput!) {
 
 - `delay(1000)` en los handlers.
 - Slug inexistente → respuesta con `errors` (HTTP 200, **no** HTTP 404).
+- Los **vuelos** traen `fecha` (día del vuelo) y los **hoteles** traen
+  `disponibleDesde`/`disponibleHasta`, un período de disponibilidad que la
+  tarjeta muestra formateado (p. ej. “Disponibilidad: 1 dic 2026 – 15 ene 2027”).
 - La mutación toma **título, tipo y precio del catálogo** (`getItemCatalogo`) y
   recalcula el total en el mock: no confía en precios ni total enviados por el
   cliente. Un `id` inexistente devuelve `errors`.
@@ -288,6 +294,7 @@ Abrir http://localhost:5173/ (el mock se activa automáticamente en desarrollo).
 | `npm run build:pages` | Build para GitHub Pages (base del repo + mock activo + `404.html`) |
 | `npm run preview` | Previsualiza el build normal |
 | `npm run preview:pages` | Previsualiza el build de Pages en su subruta |
+| `npm run evidencias` | Regenera las capturas de `docs/evidencias/` con Playwright |
 | `npm run deploy` | Publica `dist/` en la rama `gh-pages` |
 
 ---
@@ -318,16 +325,17 @@ npm run deploy
 
 ## ✅ Pruebas en navegadores
 
-Verificación **manual y asistida** sobre el **build de Pages**
+Verificación **asistida** sobre el **build de Pages**
 (`npm run build:pages` + `npm run preview:pages`), es decir, el mismo artefacto
 que se publica en GitHub Pages, navegando por la subruta
-`/viajes-cristian-torres-PFY2202/`.
+`/viajes-cristian-torres-PFY2202/`. Las capturas de cada escenario se generan
+con `npm run evidencias` (Playwright) y quedan en `docs/evidencias/`.
 
 | Navegador | Versión probada | Resultado |
 |---|---|---|
-| Chrome | 158.0.8127.36 | 12/12 escenarios ✅, consola sin errores de la app |
-| Edge | 158.0.4370.33 | 12/12 escenarios ✅, consola sin errores de la app |
-| Firefox | 160.0.1 | 12/12 escenarios ✅, consola sin errores de la app |
+| Chrome | 158.0.8127.37 | 12/12 escenarios ✅, consola sin errores de la app |
+| Edge | 158.0.4370.45 | 12/12 escenarios ✅, consola sin errores de la app |
+| Firefox | 159.0 (Playwright) | 12/12 escenarios ✅, consola sin errores de la app |
 
 ### Matriz de escenarios
 
@@ -369,6 +377,125 @@ npm run preview:pages   # http://localhost:4173/viajes-cristian-torres-PFY2202/
 
 Repite la matriz en escritorio y en vista móvil (DevTools, 375 px) para validar
 el layout responsive.
+
+### 📸 Evidencias visuales
+
+Capturas reales del build de Pages, generadas con `npm run evidencias`
+(`scripts/capturar-evidencias.mjs` + Playwright). El nombre de cada archivo indica
+navegador, viewport y escenario; todas están en `docs/evidencias/`.
+
+#### Home — REST (`/`)
+<table>
+  <tr>
+    <td align="center"><b>Chrome · 1366×900</b></td>
+    <td align="center"><b>Edge · 1366×900</b></td>
+    <td align="center"><b>Firefox · 1366×900</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/evidencias/chrome-desktop-home-rest.png" width="260" alt="Home en Chrome a 1366x900"></td>
+    <td><img src="docs/evidencias/edge-desktop-home-rest.png" width="260" alt="Home en Edge a 1366x900"></td>
+    <td><img src="docs/evidencias/firefox-desktop-home-rest.png" width="260" alt="Home en Firefox a 1366x900"></td>
+  </tr>
+</table>
+
+#### Detalle del destino — GraphQL (`/destino/paris`)
+<table>
+  <tr>
+    <td align="center"><b>Chrome · 1366×900</b></td>
+    <td align="center"><b>Edge · 1366×900</b></td>
+    <td align="center"><b>Firefox · 1366×900</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/evidencias/chrome-desktop-detalle-graphql.png" width="260" alt="Detalle en Chrome a 1366x900"></td>
+    <td><img src="docs/evidencias/edge-desktop-detalle-graphql.png" width="260" alt="Detalle en Edge a 1366x900"></td>
+    <td><img src="docs/evidencias/firefox-desktop-detalle-graphql.png" width="260" alt="Detalle en Firefox a 1366x900"></td>
+  </tr>
+</table>
+
+#### Carrito y checkout (`/carrito`)
+<table>
+  <tr>
+    <td align="center"><b>Chrome · 1366×900</b></td>
+    <td align="center"><b>Edge · 1366×900</b></td>
+    <td align="center"><b>Firefox · 1366×900</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/evidencias/chrome-desktop-carrito.png" width="260" alt="Carrito en Chrome a 1366x900"></td>
+    <td><img src="docs/evidencias/edge-desktop-carrito.png" width="260" alt="Carrito en Edge a 1366x900"></td>
+    <td><img src="docs/evidencias/firefox-desktop-carrito.png" width="260" alt="Carrito en Firefox a 1366x900"></td>
+  </tr>
+</table>
+
+#### Error GraphQL — slug inexistente (`/destino/no-existe`)
+<table>
+  <tr>
+    <td align="center"><b>Chrome · 1366×900</b></td>
+    <td align="center"><b>Edge · 1366×900</b></td>
+    <td align="center"><b>Firefox · 1366×900</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/evidencias/chrome-desktop-error-graphql.png" width="260" alt="Error GraphQL en Chrome a 1366x900"></td>
+    <td><img src="docs/evidencias/edge-desktop-error-graphql.png" width="260" alt="Error GraphQL en Edge a 1366x900"></td>
+    <td><img src="docs/evidencias/firefox-desktop-error-graphql.png" width="260" alt="Error GraphQL en Firefox a 1366x900"></td>
+  </tr>
+</table>
+
+#### Error REST (`/?fail=500`)
+<table>
+  <tr>
+    <td align="center"><b>Chrome · 1366×900</b></td>
+    <td align="center"><b>Edge · 1366×900</b></td>
+    <td align="center"><b>Firefox · 1366×900</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/evidencias/chrome-desktop-error-rest.png" width="260" alt="Error REST en Chrome a 1366x900"></td>
+    <td><img src="docs/evidencias/edge-desktop-error-rest.png" width="260" alt="Error REST en Edge a 1366x900"></td>
+    <td><img src="docs/evidencias/firefox-desktop-error-rest.png" width="260" alt="Error REST en Firefox a 1366x900"></td>
+  </tr>
+</table>
+
+#### 404 — ruta inexistente
+<table>
+  <tr>
+    <td align="center"><b>Chrome · 1366×900</b></td>
+    <td align="center"><b>Edge · 1366×900</b></td>
+    <td align="center"><b>Firefox · 1366×900</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/evidencias/chrome-desktop-404.png" width="260" alt="404 en Chrome a 1366x900"></td>
+    <td><img src="docs/evidencias/edge-desktop-404.png" width="260" alt="404 en Edge a 1366x900"></td>
+    <td><img src="docs/evidencias/firefox-desktop-404.png" width="260" alt="404 en Firefox a 1366x900"></td>
+  </tr>
+</table>
+
+#### Vista móvil — 375×812
+<table>
+  <tr>
+    <td align="center"><b>Chrome</b></td>
+    <td align="center"><b>Edge</b></td>
+    <td align="center"><b>Firefox</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/evidencias/chrome-movil-home-rest.png" width="150" alt="Home móvil en Chrome a 375x812"></td>
+    <td><img src="docs/evidencias/edge-movil-home-rest.png" width="150" alt="Home móvil en Edge a 375x812"></td>
+    <td><img src="docs/evidencias/firefox-movil-home-rest.png" width="150" alt="Home móvil en Firefox a 375x812"></td>
+  </tr>
+  <tr>
+    <td align="center">Home</td>
+    <td align="center">Home</td>
+    <td align="center">Home</td>
+  </tr>
+  <tr>
+    <td><img src="docs/evidencias/chrome-movil-detalle-graphql.png" width="150" alt="Detalle móvil en Chrome a 375x812"></td>
+    <td><img src="docs/evidencias/edge-movil-detalle-graphql.png" width="150" alt="Detalle móvil en Edge a 375x812"></td>
+    <td><img src="docs/evidencias/firefox-movil-detalle-graphql.png" width="150" alt="Detalle móvil en Firefox a 375x812"></td>
+  </tr>
+  <tr>
+    <td align="center">Detalle</td>
+    <td align="center">Detalle</td>
+    <td align="center">Detalle</td>
+  </tr>
+</table>
 
 ---
 
